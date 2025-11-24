@@ -1,10 +1,41 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+
+import './index.css';
+import Home from './views/home/Home';
+import Campaigns from './views/donations/Campaigns';
+import NewCampaign from './views/donations/NewCampaign';
+import RegisterPet from './views/pets/RegisterPet';
+import PanelView from './views/panel/Panel';
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <PanelView />,
+    children: [
+      {
+        path: '',
+        element: <Home />,
+      },
+      {
+        path: 'registrar',
+        element: <RegisterPet />,
+      },
+      {
+        path: 'campanhas',
+        element: <Campaigns />,
+      },
+      {
+        path: 'doacao',
+        element: <NewCampaign />,
+      },
+    ],
+  },
+]);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <RouterProvider router={router} />
   </StrictMode>,
-)
+);
