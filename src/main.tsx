@@ -8,6 +8,7 @@ import Campaigns from './views/donations/Campaigns';
 import NewCampaign from './views/donations/NewCampaign';
 import RegisterPet from './views/pets/RegisterPet';
 import PanelView from './views/panel/Panel';
+import Reports from './views/reports/Reports';
 
 const router = createBrowserRouter([
   {
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
       {
         path: 'doacao',
         element: <NewCampaign />,
+      },
+      {
+        path: 'casos',
+        element: <Reports />,
       },
     ],
   },

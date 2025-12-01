@@ -1,5 +1,7 @@
+import { useState, type ChangeEvent } from 'react';
 import { Form, Formik } from 'formik';
 import * as Yup from 'yup';
+import api from '../../service/api';
 
 const initialValues = {
   orgName: '',
@@ -21,7 +23,17 @@ const schema = Yup.object({
   description: Yup.string().required('Obrigatório'),
 });
 
-function NewCampaign() {
+const NewCampaign = () => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setSelectedFile(file || null);
+    setPreview(file ? URL.createObjectURL(file) : null);
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
       <div className="glass rounded-2xl p-6 space-y-6">
@@ -35,10 +47,26 @@ function NewCampaign() {
         <Formik
           initialValues={initialValues}
           validationSchema={schema}
-          onSubmit={(values, helpers) => {
-            console.log('Campanha', values);
-            helpers.setSubmitting(false);
-            alert('Campanha enviada (mock). Confira o console.');
+          onSubmit={async (values, helpers) => {
+            try {
+              let imageUrl = values.imageUrl;
+              if (selectedFile) {
+                setUploading(true);
+                imageUrl = await api.uploadCampaignImage(selectedFile);
+              }
+              const payload = { ...values, goal: Number(values.goal), amountRaised: 0, imageUrl };
+              await api.createCampaign(payload as any);
+              alert('Campanha criada com sucesso.');
+              helpers.resetForm();
+              setSelectedFile(null);
+              setPreview(null);
+            } catch (err) {
+              console.error('Erro ao criar campanha', err);
+              alert('Erro ao salvar. Verifique o console.');
+            } finally {
+              setUploading(false);
+              helpers.setSubmitting(false);
+            }
           }}
         >
           {({ values, errors, touched, handleChange, isSubmitting }) => (
@@ -109,18 +137,39 @@ function NewCampaign() {
                 />
               </div>
 
-              <div className="md:col-span-2">
-                <label className="text-sm text-slate-600 font-medium">URL da Imagem (opcional)</label>
-                <input
-                  name="imageUrl"
-                  value={values.imageUrl}
-                  onChange={handleChange}
-                  className="w-full mt-1 rounded-xl bg-slate-100 px-3 py-2 outline-none"
-                  placeholder="https://exemplo.com/imagem.jpg"
-                />
-                {touched.imageUrl && errors.imageUrl && (
-                  <p className="text-sm text-rose-500 mt-1">{errors.imageUrl}</p>
-                )}
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-slate-600 font-medium">
+                    Upload de Imagem ou Foto (opcional)
+                  </label>
+                  <div className="mt-1 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 flex flex-col gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleFileChange}
+                      className="text-sm"
+                    />
+                    {preview && (
+                      <div className="h-32 rounded-lg overflow-hidden bg-slate-100">
+                        <img src={preview} alt="Pré-visualização" className="h-full w-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-slate-600 font-medium">URL da Imagem (opcional)</label>
+                  <input
+                    name="imageUrl"
+                    value={values.imageUrl}
+                    onChange={handleChange}
+                    className="w-full mt-1 rounded-xl bg-slate-100 px-3 py-2 outline-none"
+                    placeholder="https://exemplo.com/imagem.jpg"
+                  />
+                  {touched.imageUrl && errors.imageUrl && (
+                    <p className="text-sm text-rose-500 mt-1">{errors.imageUrl}</p>
+                  )}
+                </div>
               </div>
 
               <div className="md:col-span-2">
@@ -147,10 +196,10 @@ function NewCampaign() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || uploading}
                   className="rounded-xl bg-gradient-to-r from-primary to-secondary px-6 py-3 text-white font-semibold shadow-lg shadow-primary/30 disabled:opacity-70"
                 >
-                  {isSubmitting ? 'Enviando...' : 'Criar Campanha'}
+                  {isSubmitting || uploading ? 'Enviando...' : 'Criar Campanha'}
                 </button>
               </div>
             </Form>

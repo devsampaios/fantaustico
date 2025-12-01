@@ -9,6 +9,8 @@ import {
   type PetInput,
   type ReportInput,
 } from '../api/firestore';
+import { isSupabaseEnabled, uploadImage as uploadImageSupabase } from '../api/supabase';
+import { uploadCampaignImage, uploadPetImage } from '../api/firestore';
 
 class ApiService {
   // Pets
@@ -36,6 +38,20 @@ class ApiService {
 
   async createReport(payload: ReportInput) {
     return createReportFs(payload);
+  }
+
+  async uploadPetImage(file: File) {
+    if (isSupabaseEnabled) {
+      return uploadImageSupabase(file, 'pets');
+    }
+    return uploadPetImage(file);
+  }
+
+  async uploadCampaignImage(file: File) {
+    if (isSupabaseEnabled) {
+      return uploadImageSupabase(file, 'campaigns');
+    }
+    return uploadCampaignImage(file);
   }
 }
 
