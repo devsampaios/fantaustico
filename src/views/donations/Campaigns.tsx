@@ -17,9 +17,9 @@ const Campaigns = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await api.getCampaigns();
+        const data = (await api.getCampaigns()) as Campaign[];
         setCampaigns(
-          data.map((c: any) => ({
+          data.map((c) => ({
             ...c,
             amountRaised: c.amountRaised ?? 0,
           })),

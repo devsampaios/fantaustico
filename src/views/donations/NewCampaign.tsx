@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react';
 import { Form, Formik } from 'formik';
 import * as Yup from 'yup';
 import api from '../../service/api';
+import type { CampaignInput } from '../../api/firestore';
 
 const initialValues = {
   orgName: '',
@@ -54,8 +55,13 @@ const NewCampaign = () => {
                 setUploading(true);
                 imageUrl = await api.uploadCampaignImage(selectedFile);
               }
-              const payload = { ...values, goal: Number(values.goal), amountRaised: 0, imageUrl };
-              await api.createCampaign(payload as any);
+              const payload: CampaignInput = {
+                ...values,
+                goal: Number(values.goal),
+                amountRaised: 0,
+                imageUrl,
+              };
+              await api.createCampaign(payload);
               alert('Campanha criada com sucesso.');
               helpers.resetForm();
               setSelectedFile(null);

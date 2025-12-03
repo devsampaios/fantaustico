@@ -6,8 +6,8 @@ import { faPhone, faMessage } from '@fortawesome/free-solid-svg-icons';
 
 const formatDate = (value: Report['createdAt']) => {
   if (!value) return '—';
-  if (typeof (value as any).toDate === 'function') {
-    return (value as any).toDate().toLocaleString('pt-BR');
+  if (typeof (value as { toDate?: () => Date }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate().toLocaleString('pt-BR');
   }
   try {
     return new Date(value as string).toLocaleString('pt-BR');

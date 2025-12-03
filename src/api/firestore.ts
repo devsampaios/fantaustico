@@ -86,7 +86,6 @@ const app = hasFirebaseConfig ? (getApps().length ? getApps()[0] : initializeApp
 const db = app
   ? initializeFirestore(app, {
       experimentalAutoDetectLongPolling: true,
-      useFetchStreams: false,
     })
   : null;
 const storage = app ? getStorage(app) : null;

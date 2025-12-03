@@ -1,8 +1,9 @@
 declare module '@fortawesome/fontawesome-svg-core/import.macro' {
-  export function brands(iconName: string): any;
-  export function duotone(iconName: string): any;
-  export function light(iconName: string): any;
-  export function regular(iconName: string): any;
-  export function solid(iconName: string): any;
-  export function thin(iconName: string): any;
+  import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+  export function brands(iconName: string): IconDefinition;
+  export function duotone(iconName: string): IconDefinition;
+  export function light(iconName: string): IconDefinition;
+  export function regular(iconName: string): IconDefinition;
+  export function solid(iconName: string): IconDefinition;
+  export function thin(iconName: string): IconDefinition;
 }

@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react';
 import { Form, Formik } from 'formik';
 import * as Yup from 'yup';
 import api from '../../service/api';
+import type { PetInput, ReportInput } from '../../api/firestore';
 
 const initialValues = {
   type: 'perdido',
@@ -64,11 +65,11 @@ const RegisterPet = () => {
                 setUploading(true);
                 imageUrl = await api.uploadPetImage(selectedFile);
               }
-              const payload = { ...values, imageUrl };
+              const payload: PetInput = { ...values, imageUrl };
               const isCase = values.type === 'perdido' || values.type === 'denuncia';
 
               if (isCase) {
-                await api.createReport({
+                const reportPayload: ReportInput = {
                   targetType: 'pet',
                   reason: values.type === 'denuncia' ? 'Denúncia de maus tratos' : 'Pet perdido',
                   description: values.description,
@@ -83,9 +84,10 @@ const RegisterPet = () => {
                   imageUrl,
                   contactName: values.contactName,
                   contactEmail: values.contactEmail,
-                } as any);
+                };
+                await api.createReport(reportPayload);
               } else {
-                await api.createPet(payload as any);
+                await api.createPet(payload);
               }
               alert('Registro criado com sucesso.');
               helpers.resetForm();
