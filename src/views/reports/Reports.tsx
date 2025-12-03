@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import api from '../../service/api';
 import type { Report } from '../../types/models';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPhone, faMessage } from '@fortawesome/free-solid-svg-icons';
 
 const formatDate = (value: Report['createdAt']) => {
   if (!value) return '—';
@@ -17,6 +19,14 @@ const formatDate = (value: Report['createdAt']) => {
 const Reports = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const buildContactLinks = (contact?: string) => {
+    if (!contact) return { telHref: '', whatsappHref: '' };
+    const digits = contact.replace(/\D/g, '');
+    const telHref = digits ? `tel:${digits}` : '';
+    const whatsappHref = digits ? `https://wa.me/${digits}` : '';
+    return { telHref, whatsappHref };
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -82,15 +92,48 @@ const Reports = () => {
                   )}
                 </div>
 
-                <span
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                    report.resolved
-                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                      : 'bg-amber-50 text-amber-600 border border-amber-100'
-                  }`}
-                >
-                  {report.resolved ? 'Resolvido' : 'Em aberto'}
-                </span>
+                <div className="flex flex-col gap-2">
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                      report.resolved
+                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                        : 'bg-amber-50 text-amber-600 border border-amber-100'
+                    }`}
+                  >
+                    {report.resolved ? 'Resolvido' : 'Em aberto'}
+                  </span>
+
+                  {(() => {
+                    const { telHref, whatsappHref } = buildContactLinks(report.contact);
+                    return (
+                      <div className="grid grid-cols-1 gap-2">
+                        {telHref && (
+                          <a
+                            href={telHref}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 text-white font-semibold py-2 shadow"
+                          >
+                            <FontAwesomeIcon icon={faPhone} />
+                            Ligar
+                          </a>
+                        )}
+                        {whatsappHref && (
+                          <a
+                            href={whatsappHref}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 text-white font-semibold py-2 shadow"
+                          >
+                            <FontAwesomeIcon icon={faMessage} />
+                            WhatsApp
+                          </a>
+                        )}
+                        {!telHref && !whatsappHref && (
+                          <div className="text-sm text-slate-500 text-center">Contato não informado.</div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             ))}
           </div>

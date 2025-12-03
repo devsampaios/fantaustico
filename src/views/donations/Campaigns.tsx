@@ -6,6 +6,14 @@ const Campaigns = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const buildContactLinks = (contact?: string) => {
+    if (!contact) return { telHref: '', whatsappHref: '' };
+    const digits = contact.replace(/\D/g, '');
+    const telHref = digits ? `tel:${digits}` : '';
+    const whatsappHref = digits ? `https://wa.me/${digits}` : '';
+    return { telHref, whatsappHref };
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -43,6 +51,7 @@ const Campaigns = () => {
         )}
         {campaigns.map((campaign) => {
           const progress = campaign.goal ? Math.min(100, Math.round((campaign.amountRaised / campaign.goal) * 100)) : 0;
+          const { telHref, whatsappHref } = buildContactLinks(campaign.contact);
           return (
             <article key={campaign.id} className="glass rounded-2xl overflow-hidden">
               <div className="h-56 bg-slate-100">
@@ -67,9 +76,29 @@ const Campaigns = () => {
                   />
                 </div>
                 <p className="text-sm text-slate-600">{progress}% arrecadado</p>
-                <button className="mt-2 w-full rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-semibold py-3 shadow-lg shadow-primary/30">
-                  Contribuir
-                </button>
+                <div className="mt-2 grid grid-cols-1 gap-2">
+                  {telHref && (
+                    <a
+                      href={telHref}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 text-white font-semibold py-3 shadow-lg shadow-slate-900/30"
+                    >
+                      Ligar
+                    </a>
+                  )}
+                  {whatsappHref && (
+                    <a
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 text-white font-semibold py-3 shadow-lg shadow-green-500/30"
+                    >
+                      WhatsApp
+                    </a>
+                  )}
+                  {!telHref && !whatsappHref && (
+                    <div className="text-sm text-slate-500 text-center">Contato não informado.</div>
+                  )}
+                </div>
               </div>
             </article>
           );

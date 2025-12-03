@@ -1,9 +1,9 @@
-import { initializeApp, getApps } from 'firebase/app';
+import { getApps, initializeApp } from 'firebase/app';
 import {
   addDoc,
   collection,
   getDocs,
-  getFirestore,
+  initializeFirestore,
   orderBy,
   query,
   serverTimestamp,
@@ -75,172 +75,174 @@ const missingFirebaseKeys = Object.entries(firebaseConfig)
   .map(([key]) => key);
 
 if (missingFirebaseKeys.length) {
-  console.warn('Firebase não configurado. Variáveis faltando:', missingFirebaseKeys.join(', '));
+  console.warn('[Firestore] Firebase não configurado. Variáveis faltando:', missingFirebaseKeys.join(', '));
+} else {
+  console.info('[Firestore] Todas as variáveis Firebase encontradas.');
 }
 
-const isFirebaseEnabled = Boolean(firebaseConfig.projectId && firebaseConfig.apiKey);
-const app = isFirebaseEnabled ? (getApps().length ? getApps()[0] : initializeApp(firebaseConfig)) : null;
-const db = app ? getFirestore(app) : null;
+const hasFirebaseConfig = missingFirebaseKeys.length === 0;
+
+const app = hasFirebaseConfig ? (getApps().length ? getApps()[0] : initializeApp(firebaseConfig)) : null;
+const db = app
+  ? initializeFirestore(app, {
+      experimentalAutoDetectLongPolling: true,
+      useFetchStreams: false,
+    })
+  : null;
 const storage = app ? getStorage(app) : null;
 
-const FIRESTORE_TIMEOUT_MS = 10000;
+if (app) {
+  console.info('[Firestore] App inicializado com projeto:', firebaseConfig.projectId);
+} else {
+  console.warn('[Firestore] App não inicializado. Verifique configuração.');
+}
+
+type WithId<T> = T & { id: string; createdAt?: Timestamp | null };
 
 function ensureDb() {
   if (!db) {
-    throw new Error('Firebase não configurado. Preencha as variáveis de ambiente.');
+    throw new Error('Firebase não configurado. Preencha as variáveis VITE_FIREBASE_*.');
   }
+  console.info('[Firestore] db disponível para uso.');
   return db;
 }
 
 function ensureStorage() {
   if (!storage) {
-    throw new Error('Firebase Storage não configurado. Preencha as variáveis de ambiente.');
+    throw new Error('Firebase Storage não configurado. Preencha as variáveis VITE_FIREBASE_*.');
   }
+  console.info('[Firestore] storage disponível para uso.');
   return storage;
 }
 
-async function runWithTimeout<T>(promise: Promise<T>, context: string, fallback?: T): Promise<T> {
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error(`${context} expirou após ${FIRESTORE_TIMEOUT_MS / 1000}s.`)), FIRESTORE_TIMEOUT_MS),
-  );
-
+async function safeCall<T>(fn: () => Promise<T>, context: string, fallback: T): Promise<T> {
   try {
-    return (await Promise.race([promise, timeout])) as T;
+    return await fn();
   } catch (error) {
-    const normalizedError = error instanceof Error ? error : new Error('Erro desconhecido no Firestore');
-    if (fallback !== undefined) {
-      console.error(`Erro no Firestore (${context})`, normalizedError);
-      return fallback;
-    }
-    normalizedError.message = `${context}: ${normalizedError.message}`;
-    throw normalizedError;
+    console.error(`Erro no Firestore (${context})`, error);
+    return fallback;
   }
 }
 
 // Pets
 export async function createPet(doc: PetInput) {
+  const database = ensureDb();
+  console.info('[Firestore] createPet payload:', doc);
   try {
-    const database = ensureDb();
-    const ref = await runWithTimeout(
-      addDoc(collection(database, 'pets'), {
-        ...doc,
-        createdAt: serverTimestamp(),
-        isActive: true,
-      }),
-      'criar pet',
-    );
+    const ref = await addDoc(collection(database, 'pets'), {
+      ...doc,
+      createdAt: serverTimestamp(),
+      isActive: true,
+    });
     return ref.id;
   } catch (error) {
     console.error('Erro ao criar pet', error);
-    throw new Error('Não foi possível salvar o pet. Tente novamente em instantes.');
+    throw new Error('Não foi possível salvar o pet. Verifique sua conexão ou tente novamente.');
   }
 }
 
 export async function getPets() {
   if (!db) {
     console.warn('Firebase não configurado. Retornando lista vazia.');
-    return Promise.resolve<PetInput[]>([]);
+    return [];
   }
-  try {
+  console.info('[Firestore] getPets disparado.');
+
+  return safeCall<WithId<PetInput>[]>(async () => {
     const q = query(collection(db, 'pets'), orderBy('createdAt', 'desc'));
-    const snap = await runWithTimeout(getDocs(q), 'listar pets');
+    const snap = await getDocs(q);
+    console.info('[Firestore] getPets retornou docs:', snap.size);
     return snap.docs.map((d) => ({
       id: d.id,
       ...(d.data() as PetInput),
-      createdAt: d.get('createdAt') as Timestamp,
+      createdAt: (d.get('createdAt') as Timestamp | null) ?? null,
     }));
-  } catch (error) {
-    console.error('Erro ao buscar pets', error);
-    return [];
-  }
+  }, 'listar pets', []);
 }
 
 // Campaigns
 export async function createCampaign(doc: CampaignInput) {
+  const database = ensureDb();
+  console.info('[Firestore] createCampaign payload:', doc);
   try {
-    const database = ensureDb();
-    const ref = await runWithTimeout(
-      addDoc(collection(database, 'campaigns'), {
-        ...doc,
-        amountRaised: 0,
-        status: doc.status ?? 'ativa',
-        createdAt: serverTimestamp(),
-        isActive: true,
-      }),
-      'criar campanha',
-    );
+    const ref = await addDoc(collection(database, 'campaigns'), {
+      ...doc,
+      amountRaised: 0,
+      status: doc.status ?? 'ativa',
+      createdAt: serverTimestamp(),
+      isActive: true,
+    });
     return ref.id;
   } catch (error) {
     console.error('Erro ao criar campanha', error);
-    throw new Error('Não foi possível salvar a campanha. Tente novamente em instantes.');
+    throw new Error('Não foi possível salvar a campanha. Verifique sua conexão ou tente novamente.');
   }
 }
 
 export async function getCampaigns() {
   if (!db) {
     console.warn('Firebase não configurado. Retornando lista vazia.');
-    return Promise.resolve<CampaignInput[]>([]);
+    return [];
   }
-  try {
+  console.info('[Firestore] getCampaigns disparado.');
+
+  return safeCall<WithId<CampaignInput>[]>(async () => {
     const q = query(collection(db, 'campaigns'), orderBy('createdAt', 'desc'));
-    const snap = await runWithTimeout(getDocs(q), 'listar campanhas');
+    const snap = await getDocs(q);
+    console.info('[Firestore] getCampaigns retornou docs:', snap.size);
     return snap.docs.map((d) => ({
       id: d.id,
       ...(d.data() as CampaignInput),
-      createdAt: d.get('createdAt') as Timestamp,
+      createdAt: (d.get('createdAt') as Timestamp | null) ?? null,
     }));
-  } catch (error) {
-    console.error('Erro ao buscar campanhas', error);
-    return [];
-  }
+  }, 'listar campanhas', []);
 }
 
 // Reports
 export async function createReport(doc: ReportInput) {
+  const database = ensureDb();
+  console.info('[Firestore] createReport payload:', doc);
   try {
-    const database = ensureDb();
-    const ref = await runWithTimeout(
-      addDoc(collection(database, 'reports'), {
-        ...doc,
-        createdAt: serverTimestamp(),
-        resolved: false,
-      }),
-      'criar denúncia/relato',
-    );
+    const ref = await addDoc(collection(database, 'reports'), {
+      ...doc,
+      createdAt: serverTimestamp(),
+      resolved: false,
+    });
     return ref.id;
   } catch (error) {
     console.error('Erro ao criar relato', error);
-    throw new Error('Não foi possível salvar o relato. Tente novamente em instantes.');
+    throw new Error('Não foi possível salvar o relato. Verifique sua conexão ou tente novamente.');
   }
 }
 
 export async function getReports() {
   if (!db) {
     console.warn('Firebase não configurado. Retornando lista vazia.');
-    return Promise.resolve<ReportInput[]>([]);
+    return [];
   }
-  try {
+  console.info('[Firestore] getReports disparado.');
+
+  return safeCall<WithId<ReportInput>[]>(async () => {
     const q = query(collection(db, 'reports'), orderBy('createdAt', 'desc'));
-    const snap = await runWithTimeout(getDocs(q), 'listar relatos');
+    const snap = await getDocs(q);
+    console.info('[Firestore] getReports retornou docs:', snap.size);
     return snap.docs.map((d) => ({
       id: d.id,
       ...(d.data() as ReportInput),
-      createdAt: d.get('createdAt') as Timestamp,
+      createdAt: (d.get('createdAt') as Timestamp | null) ?? null,
     }));
-  } catch (error) {
-    console.error('Erro ao buscar relatos', error);
-    return [];
-  }
+  }, 'listar relatos', []);
 }
 
 // Storage uploads
 export async function uploadPetImage(file: File) {
+  const firebaseStorage = ensureStorage();
+  console.info('[Firestore] uploadPetImage arquivo:', file.name, file.size, file.type);
   try {
-    const firebaseStorage = ensureStorage();
     const path = `pets/${Date.now()}-${file.name}`;
     const storageRef = ref(firebaseStorage, path);
-    await runWithTimeout(uploadBytes(storageRef, file), 'upload de imagem de pet');
-    return runWithTimeout(getDownloadURL(storageRef), 'URL de imagem de pet');
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
   } catch (error) {
     console.error('Erro ao fazer upload da imagem do pet', error);
     throw new Error('Falha ao enviar imagem do pet.');
@@ -248,12 +250,13 @@ export async function uploadPetImage(file: File) {
 }
 
 export async function uploadCampaignImage(file: File) {
+  const firebaseStorage = ensureStorage();
+  console.info('[Firestore] uploadCampaignImage arquivo:', file.name, file.size, file.type);
   try {
-    const firebaseStorage = ensureStorage();
     const path = `campaigns/${Date.now()}-${file.name}`;
     const storageRef = ref(firebaseStorage, path);
-    await runWithTimeout(uploadBytes(storageRef, file), 'upload de imagem de campanha');
-    return runWithTimeout(getDownloadURL(storageRef), 'URL de imagem de campanha');
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
   } catch (error) {
     console.error('Erro ao fazer upload da imagem da campanha', error);
     throw new Error('Falha ao enviar imagem da campanha.');

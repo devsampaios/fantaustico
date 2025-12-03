@@ -1,58 +1,33 @@
 import {
-  createCampaign as createCampaignFs,
-  createPet as createPetFs,
-  createReport as createReportFs,
-  getCampaigns as getCampaignsFs,
-  getPets as getPetsFs,
-  getReports as getReportsFs,
-  type CampaignInput,
-  type PetInput,
-  type ReportInput,
+  createCampaign,
+  createPet,
+  createReport,
+  getCampaigns,
+  getPets,
+  getReports,
+  uploadCampaignImage,
+  uploadPetImage,
 } from '../api/firestore';
-import { isSupabaseEnabled, uploadImage as uploadImageSupabase } from '../api/supabase';
-import { uploadCampaignImage, uploadPetImage } from '../api/firestore';
 
-class ApiService {
-  // Pets
-  async getPets() {
-    return getPetsFs();
-  }
+const api = {
+  getPets,
+  createPet,
+  getCampaigns,
+  createCampaign,
+  getReports,
+  createReport,
+  uploadPetImage,
+  uploadCampaignImage,
+};
 
-  async createPet(payload: PetInput) {
-    return createPetFs(payload);
-  }
-
-  // Campaigns
-  async getCampaigns() {
-    return getCampaignsFs();
-  }
-
-  async createCampaign(payload: CampaignInput) {
-    return createCampaignFs(payload);
-  }
-
-  // Reports
-  async getReports() {
-    return getReportsFs();
-  }
-
-  async createReport(payload: ReportInput) {
-    return createReportFs(payload);
-  }
-
-  async uploadPetImage(file: File) {
-    if (isSupabaseEnabled) {
-      return uploadImageSupabase(file, 'pets');
-    }
-    return uploadPetImage(file);
-  }
-
-  async uploadCampaignImage(file: File) {
-    if (isSupabaseEnabled) {
-      return uploadImageSupabase(file, 'campaigns');
-    }
-    return uploadCampaignImage(file);
-  }
-}
-
-export default new ApiService();
+export default api;
+export {
+  getPets,
+  createPet,
+  getCampaigns,
+  createCampaign,
+  getReports,
+  createReport,
+  uploadPetImage,
+  uploadCampaignImage,
+};
